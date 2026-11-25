@@ -18,8 +18,8 @@ def run_job(job_id):
             db.execute("UPDATE jobs SET status='a_rastrear',discovered=%s WHERE id=%s", (len(urls),job_id))
             db.commit()
         import json
-        cmd = [sys.executable, "-m", "app.run_spider", json.dumps(urls), job["pesquisa"], str(job["profundidade"]), str(job["limite"] * 12)]
-        result = subprocess.run(cmd, timeout=3600, text=True, capture_output=True)
+        cmd = [sys.executable, "-m", "app.run_spider", json.dumps(urls), job["pesquisa"], str(job["profundidade"]), "100"]
+        result = subprocess.run(cmd, timeout=21600, text=True, capture_output=True)
         if result.returncode:
             raise RuntimeError((result.stderr or result.stdout)[-1500:])
         with connection() as db:
