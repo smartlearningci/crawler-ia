@@ -1,6 +1,8 @@
 """Pesquisa inicial e extração prudente de contactos institucionais públicos."""
 import re
-from urllib.parse import urlparse, urljoin
+import base64
+import binascii
+from urllib.parse import urlparse, urljoin, parse_qs
 from bs4 import BeautifulSoup
 
 EMAIL = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
@@ -58,7 +60,18 @@ def parse_search_results(html):
     soup = BeautifulSoup(html, "html.parser")
     links = []
     for a in soup.select("li.b_algo h2 a[href], h2 a[href]"):
-        link = clean_url(a.get("href"))
-        if link and urlparse(link).hostname not in ("bing.com", "www.bing.com"):
-            links.append(link)
+        link = a.get("href", "")
+        try:
+            parsed = urlparse(link)
+            if parsed.hostname in ("bing.com", "www.bing.com"):
+                encoded = parse_qs(parsed.query).get("u", [""])[0]
+                if not encoded.startswith("a1"):
+                    continue
+                encoded = encoded[2:]
+                link = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode("utf-8")
+            link = clean_url(link)
+            if link and urlparse(link).hostname not in ("bing.com", "www.bing.com"):
+                links.append(link)
+        except (ValueError, UnicodeError, binascii.Error):
+            continue
     return list(dict.fromkeys(links))
