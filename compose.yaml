@@ -44,6 +44,13 @@ services:
     environment:
       DB_URL: postgresql://keila:${KEILA_DB_PASSWORD:-keila_local_change_me}@keila-db:5432/keila
       SECRET_KEY_BASE: ${KEILA_SECRET_KEY_BASE:-configure_uma_chave_aleatoria_antes_de_arrancar_keila}
+      MAILER_SMTP_HOST: ${MAILER_SMTP_HOST:-}
+      MAILER_SMTP_FROM_EMAIL: ${MAILER_SMTP_FROM_EMAIL:-}
+      MAILER_SMTP_USER: ${MAILER_SMTP_USER:-}
+      MAILER_SMTP_PASSWORD: ${MAILER_SMTP_PASSWORD:-}
+      MAILER_SMTP_PORT: ${MAILER_SMTP_PORT:-587}
+      MAILER_SMTP_AUTH_METHOD: ${MAILER_SMTP_AUTH_METHOD:-auto}
+      MAILER_SMTP_TLS_MODE: ${MAILER_SMTP_TLS_MODE:-auto}
       URL_HOST: localhost
       URL_SCHEME: http
       KEILA_USER: ${KEILA_USER:-admin@example.org}
