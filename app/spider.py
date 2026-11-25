@@ -11,9 +11,9 @@ class SchoolsSpider(scrapy.Spider):
     name = "schools"
     custom_settings = {
         "ROBOTSTXT_OBEY": True,
-        "CONCURRENT_REQUESTS": 4,
+        "CONCURRENT_REQUESTS": 16,
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
-        "DOWNLOAD_DELAY": 1.5,
+        "DOWNLOAD_DELAY": 2,
         "AUTOTHROTTLE_ENABLED": True,
         "AUTOTHROTTLE_START_DELAY": 2,
         "AUTOTHROTTLE_MAX_DELAY": 20,
@@ -28,7 +28,7 @@ class SchoolsSpider(scrapy.Spider):
         self.pesquisa = pesquisa
         self.profundidade = max(0, min(int(profundidade), 4))
         self.max_pages = max(1, min(int(max_pages), 500))
-        self.seen_count = 0
+        self.seen_count = {}
         self.site_names = {}
         self.saved = 0
 
@@ -39,12 +39,12 @@ class SchoolsSpider(scrapy.Spider):
                 yield scrapy.Request(url, callback=self.parse, cb_kwargs={"host": host, "depth": 0}, dont_filter=False)
 
     def parse(self, response, host, depth):
-        if self.seen_count >= self.max_pages:
+        if self.seen_count.get(host, 0) >= self.max_pages:
             return
-        self.seen_count += 1
+        self.seen_count[host] = self.seen_count.get(host, 0) + 1
         if not response.headers.get("Content-Type", b"").lower().startswith(b"text/html"):
             return
-        if response.url.split("/")[2].lower() != host.lower():
+        if (urlparse(response.url).hostname or "").removeprefix("www.") != host.removeprefix("www."):
             return
         html = response.text
         if host not in self.site_names:
@@ -61,9 +61,9 @@ class SchoolsSpider(scrapy.Spider):
                     self.saved += bool(inserted)
             except Exception as exc:
                 LOG.warning("Erro ao guardar email: %s", exc)
-        if depth >= self.profundidade or self.seen_count >= self.max_pages:
+        if depth >= self.profundidade or self.seen_count.get(host, 0) >= self.max_pages:
             return
-        for href in contact_links(html, response.url, host):
-            if self.seen_count >= self.max_pages:
+        for href in contact_links(html, response.url, urlparse(response.url).hostname):
+            if self.seen_count.get(host, 0) >= self.max_pages:
                 break
-            yield scrapy.Request(href, callback=self.parse, cb_kwargs={"host":host, "depth":depth+1})
+            yield scrapy.Request(href, callback=self.parse, cb_kwargs={"host":host, "depth":depth+1}, priority=10 if any(w in href.lower() for w in ("contact", "secretaria", "direcao")) else 0)
