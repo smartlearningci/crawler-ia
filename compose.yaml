@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: crawler
+      POSTGRES_USER: crawler
+      POSTGRES_PASSWORD: ${CRAWLER_DB_PASSWORD:-crawler_local_change_me}
+    volumes:
+      - crawler_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crawler -d crawler"]
+      interval: 5s
+      retries: 20
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      DATABASE_URL: postgresql://crawler:${CRAWLER_DB_PASSWORD:-crawler_local_change_me}@db:5432/crawler
+      SEARCH_ENGINE: ${SEARCH_ENGINE:-bing}
+      SEARCH_API_KEY: ${SEARCH_API_KEY:-}
+      SEARCH_CX: ${SEARCH_CX:-}
+    depends_on:
+      db:
+        condition: service_healthy
+  keila-db:
+    image: postgres:16-alpine
+    profiles: ["keila"]
+    environment:
+      POSTGRES_DB: keila
+      POSTGRES_USER: keila
+      POSTGRES_PASSWORD: ${KEILA_DB_PASSWORD:-keila_local_change_me}
+    volumes:
+      - keila_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keila -d keila"]
+      interval: 5s
+      retries: 20
+  keila:
+    image: pentacent/keila:0.40.2
+    profiles: ["keila"]
+    ports:
+      - "127.0.0.1:4000:4000"
+    environment:
+      DB_URL: postgresql://keila:${KEILA_DB_PASSWORD:-keila_local_change_me}@keila-db:5432/keila
+      SECRET_KEY_BASE: ${KEILA_SECRET_KEY_BASE:-configure_uma_chave_aleatoria_antes_de_arrancar_keila}
+      URL_HOST: localhost
+      URL_SCHEME: http
+      KEILA_USER: ${KEILA_USER:-admin@example.org}
+      KEILA_PASSWORD: ${KEILA_PASSWORD:-configure_password_antes_de_arrancar_keila}
+    depends_on:
+      keila-db:
+        condition: service_healthy
+volumes:
+  crawler_data:
+  keila_data:
